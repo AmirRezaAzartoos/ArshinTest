@@ -1,0 +1,47 @@
+CREATE TABLE users (
+    user_id serial PRIMARY KEY,
+    username VARCHAR (50) UNIQUE NOT NULL,
+    password VARCHAR (255) NOT NULL,
+    total_cost MONEY,
+    created_on TIMESTAMP NOT NULL,
+);
+
+CREATE TABLE items (
+    item_id serial PRIMARY KEY,
+    item_price MONEY NOT NULL,
+    owner_id INT,
+    FOREIGN KEY (owner_id) REFERENCES users (user_id)
+);
+
+
+CREATE
+OR REPLACE FUNCTION update_user_total_cost() RETURNS trigger AS
+$$
+BEGIN
+	IF TG_OP = 'INSERT' THEN
+		UPDATE
+			users
+		SET
+			total_cost = total_cost + NEW.item_price
+		WHERE
+			user_id = NEW.owner_id;
+	ELSIF TG_OP = 'UPDATE' THEN
+		UPDATE
+			users
+		SET
+			total_cost = total_cost - OLD.item_price + NEW.item_price
+		WHERE
+			user_id = NEW.owner_id;
+		END IF;
+	RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+CREATE TRIGGER update_user_total_cost_trigger
+AFTER
+INSERT
+    OR
+UPDATE
+    ON items FOR EACH ROW EXECUTE FUNCTION update_user_total_cost()
